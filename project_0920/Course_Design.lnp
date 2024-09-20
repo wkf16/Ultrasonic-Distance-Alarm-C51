@@ -1,0 +1,12 @@
+"STARTUP.obj",
+"main.obj",
+"LCD1602.obj",
+"DS1302.obj",
+"IR.obj",
+"Int0.obj",
+"Timer0.obj",
+"DS18B20.obj",
+"OneWire.obj",
+"Delay.obj",
+"HC_SR04.obj" 
+TO "Course_Design" 
