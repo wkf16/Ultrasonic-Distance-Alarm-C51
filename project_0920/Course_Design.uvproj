@@ -366,6 +366,41 @@
               <FileType>1</FileType>
               <FilePath>.\DS1302.c</FilePath>
             </File>
+            <File>
+              <FileName>Delay.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Delay.c</FilePath>
+            </File>
+            <File>
+              <FileName>DS18B20.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\DS18B20.c</FilePath>
+            </File>
+            <File>
+              <FileName>HC_SR04.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HC_SR04.c</FilePath>
+            </File>
+            <File>
+              <FileName>Int0.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Int0.c</FilePath>
+            </File>
+            <File>
+              <FileName>IR.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\IR.c</FilePath>
+            </File>
+            <File>
+              <FileName>OneWire.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\OneWire.c</FilePath>
+            </File>
+            <File>
+              <FileName>Timer0.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Timer0.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

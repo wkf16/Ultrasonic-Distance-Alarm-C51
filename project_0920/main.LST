@@ -1,4 +1,4 @@
-C51 COMPILER V9.00   MAIN                                                                  09/21/2024 03:09:01 PAGE 1   
+C51 COMPILER V9.00   MAIN                                                                  09/21/2024 03:39:08 PAGE 1   
 
 
 C51 COMPILER V9.00, COMPILATION OF MODULE MAIN
@@ -37,140 +37,149 @@ line level    source
   28   1              LCD_Init();
   29   1              IR_Init();
   30   1              HC_SR04_Init();
-  31   1              while(1)
-  32   1              {
-  33   2                      if(IR_GetDataFlag() || IR_GetRepeatFlag())      //如果收到数据帧或者收到连发帧
-  34   2                      {
-  35   3                              P3 = 0xFF;
-  36   3                              Address=IR_GetAddress();                //获取遥控器地址码
-  37   3                              Command=IR_GetCommand();                //获取遥控器命令码
-  38   3                              if(Command==0x52)               //如果遥控器VOL-按键按下
-  39   3                              {
-  40   4                                      ThrNum--;                                               //Num自减
-  41   4                                      Command = Command_old;
-  42   4                              }
-  43   3                              if(Command==0x18)                       //如果遥控器VOL+按键按下
-  44   3                              {
-  45   4                                      ThrNum++;
-  46   4                                      Command = Command_old;                                          
-  47   4                              }
-  48   3                              LCD_WriteCommand(0x01);//光标复位，清屏
-  49   3                              switch(Command){
-  50   4                                      case 0x45:
-  51   4                                              DS1302_Init();
-  52   4                                              DS1302_SetTime();
-  53   4                                              break;
-  54   4                                      case 0x47:
-  55   4                                              DS18B20_ConvertT();             //上电先转换一次温度，防止第一次读数据错误
-C51 COMPILER V9.00   MAIN                                                                  09/21/2024 03:09:01 PAGE 2   
+  31   1              DS1302_Init();
+  32   1              DS1302_SetTime();
+  33   1              while(1)
+  34   1              {
+  35   2                  if(IR_GetDataFlag() || IR_GetRepeatFlag()) // 如果收到数据帧或者收到连发帧
+  36   2                  {
+  37   3                      P3 = 0xFF;
+  38   3                      Address = IR_GetAddress();    // 获取遥控器地址码
+  39   3                      Command = IR_GetCommand();    // 获取遥控器命令码
+  40   3              
+  41   3                      Delay(20);  // 加一个短暂的延时用于去抖动（20ms），防止机械抖动影响
+  42   3              
+  43   3                      // 再次检查按键状态，确保按键没有在去抖时间内改变
+  44   3                      if(Command == IR_GetCommand()) {
+  45   4                          if(Command == 0x52)       // 如果遥控器VOL-按键按下
+  46   4                          {
+  47   5                              ThrNum--;             // Num自减
+  48   5                              Command = Command_old;
+  49   5                          }
+  50   4                          if(Command == 0x18)       // 如果遥控器VOL+按键按下
+  51   4                          {
+  52   5                              ThrNum++;             // Num自增
+  53   5                              Command = Command_old;                        
+  54   5                          }
+  55   4                          LCD_WriteCommand(0x01);    // 光标复位，清屏
+C51 COMPILER V9.00   MAIN                                                                  09/21/2024 03:39:08 PAGE 2   
 
-  56   4                                              Delay(100);                     
-  57   4                                              break;
-  58   4                              }
-  59   3                              Command_old = Command;
-  60   3                      }
-  61   2                      menu(Command,T);
-  62   2              }
-  63   1      }
-  64          
-  65          void menu(unsigned char menu_option, float T) {
-  66   1          switch (menu_option) {
-  67   2              case 0x45:
-  68   2                  // 菜单1: 直接在LCD1602上显示时间
-  69   2                  DS1302_ReadTime(); // 从DS1302读取时间
-  70   2                  // 显示时间在LCD1602 YY/MM/DD HH:MM:SS
-  71   2                  LCD_ShowString(1, 1, "Time:"); // 第一行显示 "Time:"
-  72   2                  LCD_ShowNum(1, 7, DS1302_Time[0], 2); // 年
-  73   2                  LCD_ShowChar(1, 9, '/');
-  74   2                  LCD_ShowNum(1, 10, DS1302_Time[1], 2); // 月
-  75   2                  LCD_ShowChar(1, 12, '/');
-  76   2                  LCD_ShowNum(1, 13, DS1302_Time[2], 2); // 日
-  77   2      
-  78   2                  LCD_ShowNum(2, 1, DS1302_Time[3], 2); // 小时
-  79   2                  LCD_ShowChar(2, 3, ':');
-  80   2                  LCD_ShowNum(2, 4, DS1302_Time[4], 2); // 分
-  81   2                  LCD_ShowChar(2, 6, ':');
-  82   2                  LCD_ShowNum(2, 7, DS1302_Time[5], 2); // 秒
-  83   2                  break;
-  84   2                                                                                                                 
-  85   2              case 0x46:
-  86   2                  // 菜单2: 显示超声波传感器的距离
-  87   2                  distance = HC_SR04_GetDistance(); // 获取超声波测得的距离
-  88   2              
-  89   2                  // 检查是否距离在有效范围内
-  90   2                  if (distance != 0xFFFF) {
-  91   3                      // 显示超声波测得的距离，单位为cm
-  92   3                      LCD_ShowString(1, 1, "Distance:"); 
-  93   3                      LCD_ShowNum(1, 10, distance, 3);    
-  94   3                      LCD_ShowString(1, 13, "cm");        
-  95   3              
-  96   3                      // 显示阈值ThrNum在第二行
-  97   3                      LCD_ShowString(2, 1, "Threshold:");
-  98   3                      LCD_ShowNum(2, 11, ThrNum, 3);
-  99   3                      LCD_ShowString(2, 14, "cm");
- 100   3              
- 101   3                      // 如果距离小于阈值，执行特定的处理逻辑
- 102   3                      if (distance < ThrNum) {
- 103   4                                      LCD_ShowString(1, 16, "!");
- 104   4                      } else {
- 105   4                                  LCD_ShowString(1, 16, " ");
- 106   4                      }
- 107   3                  } else {
- 108   3                      // 如果超出范围
- 109   3                      LCD_ShowString(1, 1, "Out of Range");
- 110   3                      // 清除第二行显示
- 111   3                      LCD_ShowString(2, 1, "                "); // 用空格清除第二行
- 112   3                  }
- 113   2                              Delay(10);
- 114   2                  break;
- 115   2                      case 0x47:
- 116   2                              LCD_ShowString(1,1,"Temperature:");
- 117   2                              DS18B20_ConvertT();     //转换温度
-C51 COMPILER V9.00   MAIN                                                                  09/21/2024 03:09:01 PAGE 3   
+  56   4              
+  57   4                          switch(Command){
+  58   5                              case 0x45:
+  59   5                                  DS1302_Init();
+  60   5                                  break;
+  61   5                              case 0x47:
+  62   5                                  DS18B20_ConvertT(); // 上电先转换一次温度，防止第一次读数据错误
+  63   5                                  Delay(100);          
+  64   5                                  break;
+  65   5                          }
+  66   4              
+  67   4                          Command_old = Command;     // 记录上次按键
+  68   4                      }
+  69   3                  }
+  70   2                  menu(Command, T);
+  71   2              }
+  72   1      }
+  73          
+  74          void menu(unsigned char menu_option, float T) {
+  75   1          switch (menu_option) {
+  76   2              case 0x45:
+  77   2                  // 菜单1: 直接在LCD1602上显示时间
+  78   2                  DS1302_ReadTime(); // 从DS1302读取时间
+  79   2                  // 显示时间在LCD1602 YY/MM/DD HH:MM:SS
+  80   2                  LCD_ShowString(1, 1, "Time:"); // 第一行显示 "Time:"
+  81   2                  LCD_ShowNum(1, 7, DS1302_Time[0], 2); // 年
+  82   2                  LCD_ShowChar(1, 9, '/');
+  83   2                  LCD_ShowNum(1, 10, DS1302_Time[1], 2); // 月
+  84   2                  LCD_ShowChar(1, 12, '/');
+  85   2                  LCD_ShowNum(1, 13, DS1302_Time[2], 2); // 日
+  86   2      
+  87   2                  LCD_ShowNum(2, 1, DS1302_Time[3], 2); // 小时
+  88   2                  LCD_ShowChar(2, 3, ':');
+  89   2                  LCD_ShowNum(2, 4, DS1302_Time[4], 2); // 分
+  90   2                  LCD_ShowChar(2, 6, ':');
+  91   2                  LCD_ShowNum(2, 7, DS1302_Time[5], 2); // 秒
+  92   2                  break;
+  93   2                                                                                                                 
+  94   2              case 0x46:
+  95   2                  // 菜单2: 显示超声波传感器的距离
+  96   2                  distance = HC_SR04_GetDistance(); // 获取超声波测得的距离
+  97   2              
+  98   2                  // 检查是否距离在有效范围内
+  99   2                  if (distance != 0xFFFF) {
+ 100   3                      // 显示超声波测得的距离，单位为cm
+ 101   3                      LCD_ShowString(1, 1, "Distance:"); 
+ 102   3                      LCD_ShowNum(1, 10, distance, 3);    
+ 103   3                      LCD_ShowString(1, 13, "cm");        
+ 104   3              
+ 105   3                      // 显示阈值ThrNum在第二行
+ 106   3                      LCD_ShowString(2, 1, "Threshold:");
+ 107   3                      LCD_ShowNum(2, 11, ThrNum, 3);
+ 108   3                      LCD_ShowString(2, 14, "cm");
+ 109   3              
+ 110   3                      // 如果距离小于阈值，执行特定的处理逻辑
+ 111   3                      if (distance < ThrNum) {
+ 112   4                                      LCD_ShowString(1, 16, "!");
+ 113   4                      } else {
+ 114   4                                  LCD_ShowString(1, 16, " ");
+ 115   4                      }
+ 116   3                  } else {
+ 117   3                      // 如果超出范围
+C51 COMPILER V9.00   MAIN                                                                  09/21/2024 03:39:08 PAGE 3   
 
- 118   2                              T=DS18B20_ReadT();      //读取温度
- 119   2                              if(T<0)                         //如果温度小于0
- 120   2                              {
- 121   3                                      LCD_ShowChar(2,1,'-');  //显示负号
- 122   3                                      T=-T;                   //将温度变为正数
- 123   3                              }
- 124   2                              else                            //如果温度大于等于0
- 125   2                              {
- 126   3                                      LCD_ShowChar(2,1,'+');  //显示正号
- 127   3                              }
- 128   2                              LCD_ShowNum(2,2,T,3);           //显示温度整数部分
- 129   2                              LCD_ShowChar(2,5,'.');          //显示小数点
- 130   2                              LCD_ShowNum(2,6,(unsigned long)(T*10000)%10000,4);//显示温度小数部分
- 131   2                              break;
- 132   2              default:
- 133   2                  // 显示无效
- 134   2                              LCD_ShowString(1,1,"key_number:");
- 135   2                  LCD_ShowHexNum(2,5,menu_option,2);
- 136   2                  break;
- 137   2          }
- 138   1      }
- 139                  /*
- 140          // 蜂鸣器按照1000Hz的频率响ms时间
- 141          void Buzzer_Time(unsigned int ms)
- 142          {
- 143                  unsigned int i;
- 144                  for(i=0;i<ms*2;i++)//控制时间：ms给100，蜂鸣器响100ms
- 145                  {
- 146                          Buzzer = !Buzzer;//蜂鸣器引脚电平翻转发声
- 147                          Delay_ms(1);//控制频率：每隔500us翻转一次
- 148                          //高电平500us，低电平500us，T = 1000us，f = 1/10^-3(s) = 1000HZ
- 149                  }
- 150          } */
- 151          
- 152          void LCD_ShowInt(unsigned char Line, unsigned char Column, int Number) {
- 153   1          char buffer[16];  // 用于存储转换后的字符串
- 154   1          sprintf(buffer, "%d", Number);  // 将整数转换为字符串
- 155   1          LCD_ShowString(Line, Column, buffer);  // 显示字符串
- 156   1      }
+ 118   3                      LCD_ShowString(1, 1, "Out of Range");
+ 119   3                      // 清除第二行显示
+ 120   3                      LCD_ShowString(2, 1, "                "); // 用空格清除第二行
+ 121   3                  }
+ 122   2                              Delay(10);
+ 123   2                  break;
+ 124   2                      case 0x47:
+ 125   2                              LCD_ShowString(1,1,"Temperature:");
+ 126   2                              DS18B20_ConvertT();     //转换温度
+ 127   2                              T=DS18B20_ReadT();      //读取温度
+ 128   2                              if(T<0)                         //如果温度小于0
+ 129   2                              {
+ 130   3                                      LCD_ShowChar(2,1,'-');  //显示负号
+ 131   3                                      T=-T;                   //将温度变为正数
+ 132   3                              }
+ 133   2                              else                            //如果温度大于等于0
+ 134   2                              {
+ 135   3                                      LCD_ShowChar(2,1,'+');  //显示正号
+ 136   3                              }
+ 137   2                              LCD_ShowNum(2,2,T,3);           //显示温度整数部分
+ 138   2                              LCD_ShowChar(2,5,'.');          //显示小数点
+ 139   2                              LCD_ShowNum(2,6,(unsigned long)(T*10000)%10000,4);//显示温度小数部分
+ 140   2                              break;
+ 141   2              default:
+ 142   2                  // 显示无效
+ 143   2                              LCD_ShowString(1,1,"key_number:");
+ 144   2                  LCD_ShowHexNum(2,5,menu_option,2);
+ 145   2                  break;
+ 146   2          }
+ 147   1      }
+ 148                  /*
+ 149          // 蜂鸣器按照1000Hz的频率响ms时间
+ 150          void Buzzer_Time(unsigned int ms)
+ 151          {
+ 152                  unsigned int i;
+ 153                  for(i=0;i<ms*2;i++)//控制时间：ms给100，蜂鸣器响100ms
+ 154                  {
+ 155                          Buzzer = !Buzzer;//蜂鸣器引脚电平翻转发声
+ 156                          Delay_ms(1);//控制频率：每隔500us翻转一次
+ 157                          //高电平500us，低电平500us，T = 1000us，f = 1/10^-3(s) = 1000HZ
+ 158                  }
+ 159          } */
+ 160          
+ 161          void LCD_ShowInt(unsigned char Line, unsigned char Column, int Number) {
+ 162   1          char buffer[16];  // 用于存储转换后的字符串
+ 163   1          sprintf(buffer, "%d", Number);  // 将整数转换为字符串
+ 164   1          LCD_ShowString(Line, Column, buffer);  // 显示字符串
+ 165   1      }
 
 
 MODULE INFORMATION:   STATIC OVERLAYABLE
-   CODE SIZE        =    662    ----
+   CODE SIZE        =    680    ----
    CONSTANT SIZE    =     92    ----
    XDATA SIZE       =   ----    ----
    PDATA SIZE       =   ----    ----

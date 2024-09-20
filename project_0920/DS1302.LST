@@ -1,4 +1,4 @@
-C51 COMPILER V9.00   DS1302                                                                09/21/2024 03:09:01 PAGE 1   
+C51 COMPILER V9.00   DS1302                                                                09/21/2024 03:39:08 PAGE 1   
 
 
 C51 COMPILER V9.00, COMPILATION OF MODULE DS1302
@@ -28,106 +28,107 @@ line level    source
   19          void DS1302_Init() {
   20   1          DS1302_CE = 0; // 关闭CE，低电平
   21   1          DS1302_SCLK = 0; // 时钟线拉低
-  22   1      }
-  23          
-  24          // DS1302单字节写入函数
-  25          void DS1302_WriteByte(unsigned char command, unsigned char Data) {
-  26   1          unsigned char i;
-  27   1          DS1302_CE = 1; // 使能CE，拉高电平
-  28   1          for (i = 0; i < 8; i++) { // 写入命令字节
-  29   2              DS1302_IO = command & 0x01; // 低位先传输
-  30   2              command >>= 1;
-  31   2              DS1302_SCLK = 1;
-  32   2              DS1302_SCLK = 0;
-  33   2          }
-  34   1          for (i = 0; i < 8; i++) { // 写入数据字节
-  35   2              DS1302_IO = Data & 0x01; // 低位先传输
-  36   2              Data >>= 1;
-  37   2              DS1302_SCLK = 1;
-  38   2              DS1302_SCLK = 0;
-  39   2          }
-  40   1          DS1302_CE = 0; // 结束通信
-  41   1      }
-  42          
-  43          // DS1302单字节读取函数
-  44          unsigned char DS1302_ReadByte(unsigned char command) {
-  45   1          unsigned char i, Data = 0x00;
-  46   1          command |= 0x01; // 设置为读取指令
-  47   1          DS1302_CE = 1; // 使能CE，拉高电平
-  48   1          for (i = 0; i < 8; i++) { // 发送命令字节
-  49   2              DS1302_IO = command & 0x01;
-  50   2              command >>= 1;
-  51   2              DS1302_SCLK = 1;
-  52   2              DS1302_SCLK = 0;
-  53   2          }
-  54   1          DS1302_IO = 1; // 释放总线，准备接收数据
-  55   1          for (i = 0; i < 8; i++) { // 读取数据字节
-C51 COMPILER V9.00   DS1302                                                                09/21/2024 03:09:01 PAGE 2   
+  22   1              DS1302_IO = 1;
+  23   1      }
+  24          
+  25          // DS1302单字节写入函数
+  26          void DS1302_WriteByte(unsigned char command, unsigned char Data) {
+  27   1          unsigned char i;
+  28   1          DS1302_CE = 1; // 使能CE，拉高电平
+  29   1          for (i = 0; i < 8; i++) { // 写入命令字节
+  30   2              DS1302_IO = command & 0x01; // 低位先传输
+  31   2              command >>= 1;
+  32   2              DS1302_SCLK = 1;
+  33   2              DS1302_SCLK = 0;
+  34   2          }
+  35   1          for (i = 0; i < 8; i++) { // 写入数据字节
+  36   2              DS1302_IO = Data & 0x01; // 低位先传输
+  37   2              Data >>= 1;
+  38   2              DS1302_SCLK = 1;
+  39   2              DS1302_SCLK = 0;
+  40   2          }
+  41   1          DS1302_CE = 0; // 结束通信
+  42   1      }
+  43          
+  44          // DS1302单字节读取函数
+  45          unsigned char DS1302_ReadByte(unsigned char command) {
+  46   1          unsigned char i, Data = 0x00;
+  47   1          command |= 0x01; // 设置为读取指令
+  48   1          DS1302_CE = 1; // 使能CE，拉高电平
+  49   1          for (i = 0; i < 8; i++) { // 发送命令字节
+  50   2              DS1302_IO = command & 0x01;
+  51   2              command >>= 1;
+  52   2              DS1302_SCLK = 1;
+  53   2              DS1302_SCLK = 0;
+  54   2          }
+  55   1          DS1302_IO = 1; // 释放总线，准备接收数据
+C51 COMPILER V9.00   DS1302                                                                09/21/2024 03:39:08 PAGE 2   
 
-  56   2              DS1302_SCLK = 1;
-  57   2              if (DS1302_IO) {
-  58   3                  Data |= (0x01 << i); // 低位先读
-  59   3              }
-  60   2              DS1302_SCLK = 0;
-  61   2          }
-  62   1          DS1302_CE = 0; // 结束通信
-  63   1              DS1302_IO = 0;
-  64   1          return Data;
-  65   1      }
-  66          
-  67          // 设置DS1302时间
-  68          void DS1302_SetTime() {
-  69   1          DS1302_WriteByte(DS1302_WP, 0x00); // 关闭写保护
-  70   1          DS1302_WriteByte(DS1302_YEAR, (DS1302_Time[0] / 10 * 16) + (DS1302_Time[0] % 10)); // 设置年
-  71   1          DS1302_WriteByte(DS1302_MONTH, (DS1302_Time[1] / 10 * 16) + (DS1302_Time[1] % 10)); // 设置月
-  72   1          DS1302_WriteByte(DS1302_DATE, (DS1302_Time[2] / 10 * 16) + (DS1302_Time[2] % 10)); // 设置日
-  73   1          DS1302_WriteByte(DS1302_HOUR, (DS1302_Time[3] / 10 * 16) + (DS1302_Time[3] % 10)); // 设置时
-  74   1          DS1302_WriteByte(DS1302_MINUTE, (DS1302_Time[4] / 10 * 16) + (DS1302_Time[4] % 10)); // 设置分
-  75   1          DS1302_WriteByte(DS1302_SECOND, (DS1302_Time[5] / 10 * 16) + (DS1302_Time[5] % 10)); // 设置秒
-  76   1          DS1302_WriteByte(DS1302_DAY, (DS1302_Time[6] / 10 * 16) + (DS1302_Time[6] % 10)); // 设置星期
-  77   1          DS1302_WriteByte(DS1302_WP, 0x80); // 启用写保护
-  78   1      }
-  79          
-  80          // 读取DS1302时间
-  81          void DS1302_ReadTime() {
-  82   1          unsigned int Temp;
-  83   1      
-  84   1          Temp = DS1302_ReadByte(DS1302_YEAR); // 读取年
-  85   1          DS1302_Time[0] = BCD_to_Decimal(Temp); // BCD转十进制
-  86   1      
-  87   1          Temp = DS1302_ReadByte(DS1302_MONTH); // 读取月
-  88   1          DS1302_Time[1] = BCD_to_Decimal(Temp); // BCD转十进制
-  89   1      
-  90   1          Temp = DS1302_ReadByte(DS1302_DATE); // 读取日
-  91   1          DS1302_Time[2] = BCD_to_Decimal(Temp); // BCD转十进制
-  92   1      
-  93   1          Temp = DS1302_ReadByte(DS1302_HOUR); // 读取时
-  94   1          DS1302_Time[3] = BCD_to_Decimal(Temp); // BCD转十进制
-  95   1      
-  96   1          Temp = DS1302_ReadByte(DS1302_MINUTE); // 读取分
-  97   1          DS1302_Time[4] = BCD_to_Decimal(Temp); // BCD转十进制
-  98   1      
-  99   1          Temp = DS1302_ReadByte(DS1302_SECOND); // 读取秒
- 100   1          DS1302_Time[5] = BCD_to_Decimal(Temp); // BCD转十进制
- 101   1      
- 102   1          Temp = DS1302_ReadByte(DS1302_DAY); // 读取星期
- 103   1          DS1302_Time[6] = BCD_to_Decimal(Temp); // BCD转十进制
- 104   1      }
- 105          
- 106          unsigned int BCD_to_Decimal(unsigned int bcd) {
-*** WARNING C235 IN LINE 106 OF DS1302.C: parameter 1: different types
- 107   1          return ((bcd >> 4) * 10) + (bcd & 0x0F); // 高位 * 10 + 低位
- 108   1      }
+  56   1          for (i = 0; i < 8; i++) { // 读取数据字节
+  57   2              DS1302_SCLK = 1;
+  58   2              if (DS1302_IO) {
+  59   3                  Data |= (0x01 << i); // 低位先读
+  60   3              }
+  61   2              DS1302_SCLK = 0;
+  62   2          }
+  63   1          DS1302_CE = 0; // 结束通信
+  64   1              DS1302_IO = 0;
+  65   1          return Data;
+  66   1      }
+  67          
+  68          // 设置DS1302时间
+  69          void DS1302_SetTime() {
+  70   1          DS1302_WriteByte(DS1302_WP, 0x00); // 关闭写保护
+  71   1          DS1302_WriteByte(DS1302_YEAR, (DS1302_Time[0] / 10 * 16) + (DS1302_Time[0] % 10)); // 设置年
+  72   1          DS1302_WriteByte(DS1302_MONTH, (DS1302_Time[1] / 10 * 16) + (DS1302_Time[1] % 10)); // 设置月
+  73   1          DS1302_WriteByte(DS1302_DATE, (DS1302_Time[2] / 10 * 16) + (DS1302_Time[2] % 10)); // 设置日
+  74   1          DS1302_WriteByte(DS1302_HOUR, (DS1302_Time[3] / 10 * 16) + (DS1302_Time[3] % 10)); // 设置时
+  75   1          DS1302_WriteByte(DS1302_MINUTE, (DS1302_Time[4] / 10 * 16) + (DS1302_Time[4] % 10)); // 设置分
+  76   1          DS1302_WriteByte(DS1302_SECOND, (DS1302_Time[5] / 10 * 16) + (DS1302_Time[5] % 10)); // 设置秒
+  77   1          DS1302_WriteByte(DS1302_DAY, (DS1302_Time[6] / 10 * 16) + (DS1302_Time[6] % 10)); // 设置星期
+  78   1          DS1302_WriteByte(DS1302_WP, 0x80); // 启用写保护
+  79   1      }
+  80          
+  81          // 读取DS1302时间
+  82          void DS1302_ReadTime() {
+  83   1          unsigned int Temp;
+  84   1      
+  85   1          Temp = DS1302_ReadByte(DS1302_YEAR); // 读取年
+  86   1          DS1302_Time[0] = BCD_to_Decimal(Temp); // BCD转十进制
+  87   1      
+  88   1          Temp = DS1302_ReadByte(DS1302_MONTH); // 读取月
+  89   1          DS1302_Time[1] = BCD_to_Decimal(Temp); // BCD转十进制
+  90   1      
+  91   1          Temp = DS1302_ReadByte(DS1302_DATE); // 读取日
+  92   1          DS1302_Time[2] = BCD_to_Decimal(Temp); // BCD转十进制
+  93   1      
+  94   1          Temp = DS1302_ReadByte(DS1302_HOUR); // 读取时
+  95   1          DS1302_Time[3] = BCD_to_Decimal(Temp); // BCD转十进制
+  96   1      
+  97   1          Temp = DS1302_ReadByte(DS1302_MINUTE); // 读取分
+  98   1          DS1302_Time[4] = BCD_to_Decimal(Temp); // BCD转十进制
+  99   1      
+ 100   1          Temp = DS1302_ReadByte(DS1302_SECOND); // 读取秒
+ 101   1          DS1302_Time[5] = BCD_to_Decimal(Temp); // BCD转十进制
+ 102   1      
+ 103   1          Temp = DS1302_ReadByte(DS1302_DAY); // 读取星期
+ 104   1          DS1302_Time[6] = BCD_to_Decimal(Temp); // BCD转十进制
+ 105   1      }
+ 106          
+ 107          unsigned int BCD_to_Decimal(unsigned int bcd) {
+*** WARNING C235 IN LINE 107 OF DS1302.C: parameter 1: different types
+ 108   1          return ((bcd >> 4) * 10) + (bcd & 0x0F); // 高位 * 10 + 低位
+ 109   1      }
 
 
 MODULE INFORMATION:   STATIC OVERLAYABLE
-   CODE SIZE        =    467    ----
+   CODE SIZE        =    469    ----
    CONSTANT SIZE    =   ----    ----
    XDATA SIZE       =   ----    ----
    PDATA SIZE       =   ----    ----
-   DATA SIZE        =     14    ----
-C51 COMPILER V9.00   DS1302                                                                09/21/2024 03:09:01 PAGE 3   
+C51 COMPILER V9.00   DS1302                                                                09/21/2024 03:39:08 PAGE 3   
 
+   DATA SIZE        =     14    ----
    IDATA SIZE       =   ----    ----
    BIT SIZE         =   ----    ----
 END OF MODULE INFORMATION.

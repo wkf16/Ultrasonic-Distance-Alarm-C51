@@ -28,37 +28,46 @@ void main()
 	LCD_Init();
 	IR_Init();
 	HC_SR04_Init();
+	DS1302_Init();
+	DS1302_SetTime();
 	while(1)
 	{
-		if(IR_GetDataFlag() || IR_GetRepeatFlag())	//如果收到数据帧或者收到连发帧
-		{
-			P3 = 0xFF;
-			Address=IR_GetAddress();		//获取遥控器地址码
-			Command=IR_GetCommand();		//获取遥控器命令码
-			if(Command==0x52)		//如果遥控器VOL-按键按下
-			{
-				ThrNum--;						//Num自减
-				Command = Command_old;
-			}
-			if(Command==0x18)			//如果遥控器VOL+按键按下
-			{
-				ThrNum++;
-				Command = Command_old;						
-			}
-			LCD_WriteCommand(0x01);//光标复位，清屏
-			switch(Command){
-				case 0x45:
-					DS1302_Init();
-					DS1302_SetTime();
-					break;
-				case 0x47:
-					DS18B20_ConvertT();		//上电先转换一次温度，防止第一次读数据错误
-					Delay(100);			
-					break;
-			}
-			Command_old = Command;
-		}
-		menu(Command,T);
+	    if(IR_GetDataFlag() || IR_GetRepeatFlag()) // 如果收到数据帧或者收到连发帧
+	    {
+	        P3 = 0xFF;
+	        Address = IR_GetAddress();    // 获取遥控器地址码
+	        Command = IR_GetCommand();    // 获取遥控器命令码
+	
+	        Delay(20);  // 加一个短暂的延时用于去抖动（20ms），防止机械抖动影响
+	
+	        // 再次检查按键状态，确保按键没有在去抖时间内改变
+	        if(Command == IR_GetCommand()) {
+	            if(Command == 0x52)       // 如果遥控器VOL-按键按下
+	            {
+	                ThrNum--;             // Num自减
+	                Command = Command_old;
+	            }
+	            if(Command == 0x18)       // 如果遥控器VOL+按键按下
+	            {
+	                ThrNum++;             // Num自增
+	                Command = Command_old;                        
+	            }
+	            LCD_WriteCommand(0x01);    // 光标复位，清屏
+	
+	            switch(Command){
+	                case 0x45:
+	                    DS1302_Init();
+	                    break;
+	                case 0x47:
+	                    DS18B20_ConvertT(); // 上电先转换一次温度，防止第一次读数据错误
+	                    Delay(100);          
+	                    break;
+	            }
+	
+	            Command_old = Command;     // 记录上次按键
+	        }
+	    }
+	    menu(Command, T);
 	}
 }
 
