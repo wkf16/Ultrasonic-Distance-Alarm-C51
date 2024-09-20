@@ -38,7 +38,7 @@ void main()
 	        Address = IR_GetAddress();    // 获取遥控器地址码
 	        Command = IR_GetCommand();    // 获取遥控器命令码
 	
-	        Delay(20);  // 加一个短暂的延时用于去抖动（20ms），防止机械抖动影响
+	        Delay(80);  // 加一个短暂的延时用于去抖动，防止机械抖动影响
 	
 	        // 再次检查按键状态，确保按键没有在去抖时间内改变
 	        if(Command == IR_GetCommand()) {
