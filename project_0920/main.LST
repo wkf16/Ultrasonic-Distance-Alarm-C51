@@ -1,4 +1,4 @@
-C51 COMPILER V9.00   MAIN                                                                  09/21/2024 08:08:56 PAGE 1   
+C51 COMPILER V9.00   MAIN                                                                  09/21/2024 10:46:07 PAGE 1   
 
 
 C51 COMPILER V9.00, COMPILATION OF MODULE MAIN
@@ -17,240 +17,293 @@ line level    source
    8          #include "IR.h"
    9          #include "UART.h"
   10          #include "string.h"
-  11          
-  12          unsigned int distance;
-  13          sbit Buzzer = P2^5;
-  14          
-  15          unsigned char ThrNum = 10;
-  16          unsigned char Address;
+  11          #include <stdlib.h>
+  12          
+  13          unsigned int pdata distance;
+  14          sbit Buzzer = P2^5;
+  15          
+  16          unsigned char ThrNum = 10;
   17          unsigned char Command;
   18          unsigned char Command_old;
   19          unsigned int Loop_count = 0;
-  20          unsigned char Data[16];
-  21          void AT_Init(void);
-  22          
-  23          float T;
-  24          
-  25          char putchar(char dat);
-  26          void menu(unsigned char, float);
-  27          void Delay_ms(unsigned int);
-  28          void LCD_ShowInt(unsigned char, unsigned char, int);
-  29          void Buzzer_Time(unsigned int ms);   
-  30          
-  31          void main()
-  32          {
-  33   1              UART_Init();
-  34   1              LCD_Init();
-  35   1              LCD_ShowString(1, 1, "AT_Init"); // 第一行显示 "Time:"
-  36   1              Delay(500);
-  37   1              AT_Init();
-  38   1              P3 |= 0xFC;     
-  39   1              
-  40   1              IR_Init();
-  41   1              HC_SR04_Init();
-  42   1              DS1302_Init();
-  43   1              DS1302_SetTime();
-  44   1              while(1)
-  45   1              {
-  46   2                      Loop_count++;
-  47   2                      distance = HC_SR04_GetDistance(); // 获取超声波测得的距离
-  48   2                      DS18B20_ConvertT();     //转换温度
-  49   2                      T=DS18B20_ReadT();      //读取温度
-  50   2                      //printf("%d\r\n", Loop_count);
-  51   2                      if (Loop_count > 20){
-  52   3                              //UART_Init();
-  53   3                              Loop_count = 0;
-  54   3                              printf("AT+MQTTPUB=0,\"/sys/k1ryxzSF8vb/0c4qP0fwXkAUsGu2Mfhd/thing/event/property/post\",\"{\\\"params\
-             -\\":{\\\"DetectDistance\\\":%d}}\",1,0", distance);
-C51 COMPILER V9.00   MAIN                                                                  09/21/2024 08:08:56 PAGE 2   
+  20          //unsigned char xdata  Data[48];
+  21          bit timeReceived = 0;
+  22          void AT_Init(void);
+  23          
+  24          float T;
+  25          
+  26          char putchar(char dat);
+  27          void menu(unsigned char, float);
+  28          void Delay_ms(unsigned int);
+  29          void LCD_ShowInt(unsigned char, unsigned char, int);
+  30          void Buzzer_Time(unsigned int);
+  31          void parseTime(char*);   
+  32          
+  33          void main()
+  34          {
+  35   1              LCD_Init();
+  36   1              LCD_ShowString(1, 1, "AT_Init"); // 第一行显示 "Time:"
+  37   1              Delay(10000);
+  38   1              UART_Init();
+  39   1              AT_Init();
+  40   1              P3 |= 0xFC;     
+  41   1              
+  42   1              IR_Init();
+  43   1              HC_SR04_Init();
+  44   1              DS1302_Init();
+  45   1              DS1302_SetTime();
+  46   1              while(1)
+  47   1              {
+  48   2                      Loop_count++;
+  49   2                      distance = HC_SR04_GetDistance(); // 获取超声波测得的距离
+  50   2                      DS18B20_ConvertT();     //转换温度
+  51   2                      T=DS18B20_ReadT();      //读取温度
+  52   2                      //printf("%d\r\n", Loop_count);
+  53   2                      if (Loop_count > 20){
+  54   3                              //UART_Init();
+  55   3                              Loop_count = 0;
+C51 COMPILER V9.00   MAIN                                                                  09/21/2024 10:46:07 PAGE 2   
 
-  55   3                              printf("\r\n");
-  56   3                      }
-  57   2                  if(IR_GetDataFlag() || IR_GetRepeatFlag()) // 如果收到数据帧或者收到连发帧
-  58   2                  {
-  59   3                      Address = IR_GetAddress();    // 获取遥控器地址码
-  60   3                      Command = IR_GetCommand();    // 获取遥控器命令码
-  61   3              
-  62   3                      Delay(80);  // 加一个短暂的延时用于去抖动，防止机械抖动影响
-  63   3              
-  64   3                      // 再次检查按键状态，确保按键没有在去抖时间内改变
-  65   3                      if(Command == IR_GetCommand()) {
-  66   4                          if(Command == 0x52)       // 如果遥控器VOL-按键按下
-  67   4                          {
-  68   5                              ThrNum--;             // Num自减
-  69   5                              Command = Command_old;
-  70   5                          }
-  71   4                          if(Command == 0x18)       // 如果遥控器VOL+按键按下
-  72   4                          {
-  73   5                              ThrNum++;             // Num自增
-  74   5                              Command = Command_old;                        
-  75   5                          }
-  76   4                          LCD_WriteCommand(0x01);    // 光标复位，清屏
-  77   4              
-  78   4                          switch(Command){
-  79   5                              case 0x45:
-  80   5                                  DS1302_Init();
-  81   5                                  break;
-  82   5                              case 0x47:
-  83   5                                                      P3 |= 0xFC;
-  84   5                                  DS18B20_ConvertT(); // 上电先转换一次温度，防止第一次读数据错误
-  85   5                                  Delay(100);          
-  86   5                                  break;
-  87   5                          }
-  88   4              
-  89   4                          Command_old = Command;     // 记录上次按键
-  90   4                      }
-  91   3                  }
-  92   2                  menu(Command, T);
-  93   2              }
-  94   1      }  
-  95          
-  96          void menu(unsigned char menu_option, float T) {
-  97   1          switch (menu_option) {
-  98   2              case 0x45:
-  99   2                  // 菜单1: 直接在LCD1602上显示时间
- 100   2                  DS1302_ReadTime(); // 从DS1302读取时间
- 101   2                  // 显示时间在LCD1602 YY/MM/DD HH:MM:SS
- 102   2                  LCD_ShowString(1, 1, "Time:"); // 第一行显示 "Time:"
- 103   2                  LCD_ShowNum(1, 7, DS1302_Time[0], 2); // 年
- 104   2                  LCD_ShowChar(1, 9, '/');
- 105   2                  LCD_ShowNum(1, 10, DS1302_Time[1], 2); // 月
- 106   2                  LCD_ShowChar(1, 12, '/');
- 107   2                  LCD_ShowNum(1, 13, DS1302_Time[2], 2); // 日
- 108   2      
- 109   2                  LCD_ShowNum(2, 1, DS1302_Time[3], 2); // 小时
- 110   2                  LCD_ShowChar(2, 3, ':');
- 111   2                  LCD_ShowNum(2, 4, DS1302_Time[4], 2); // 分
- 112   2                  LCD_ShowChar(2, 6, ':');
- 113   2                  LCD_ShowNum(2, 7, DS1302_Time[5], 2); // 秒
- 114   2                  break;
- 115   2                                                                                                                 
- 116   2              case 0x46:
-C51 COMPILER V9.00   MAIN                                                                  09/21/2024 08:08:56 PAGE 3   
+  56   3                              printf("AT+MQTTPUB=0,\"/sys/k1ryxzSF8vb/0c4qP0fwXkAUsGu2Mfhd/thing/event/property/post\",\"{\\\"params\
+             -\\":{\\\"DetectDistance\\\":%d}}\",1,0\r\n", distance);
+  57   3                              LCD_ShowString(2, 16, "!");
+  58   3                              Delay(500);
+  59   3                              printf("AT+CIPSNTPTIME?\r\n");
+  60   3                  } else {
+  61   3                              LCD_ShowString(2, 16, " ");
+  62   3                  }
+  63   2                  if(IR_GetDataFlag() || IR_GetRepeatFlag()) // 如果收到数据帧或者收到连发帧
+  64   2                  {
+  65   3      
+  66   3                      Command = IR_GetCommand();    // 获取遥控器命令码
+  67   3              
+  68   3                      Delay(80);  // 加一个短暂的延时用于去抖动，防止机械抖动影响
+  69   3              
+  70   3                      // 再次检查按键状态，确保按键没有在去抖时间内改变
+  71   3                      if(Command == IR_GetCommand()) {
+  72   4                          if(Command == 0x52)       // 如果遥控器VOL-按键按下
+  73   4                          {
+  74   5                              ThrNum--;             // Num自减
+  75   5                              Command = Command_old;
+  76   5                          }
+  77   4                          if(Command == 0x18)       // 如果遥控器VOL+按键按下
+  78   4                          {
+  79   5                              ThrNum++;             // Num自增
+  80   5                              Command = Command_old;                        
+  81   5                          }
+  82   4                          LCD_WriteCommand(0x01);    // 光标复位，清屏
+  83   4              
+  84   4                          switch(Command){
+  85   5                              case 0x45:
+  86   5                                  DS1302_Init();
+  87   5                                  break;
+  88   5                              case 0x47:
+  89   5                                                      P3 |= 0xFC;
+  90   5                                  DS18B20_ConvertT(); // 上电先转换一次温度，防止第一次读数据错误
+  91   5                                  Delay(100);          
+  92   5                                  break;
+  93   5                          }
+  94   4              
+  95   4                          Command_old = Command;     // 记录上次按键
+  96   4                      }
+  97   3                  }
+  98   2                  menu(Command, T);
+  99   2              }
+ 100   1      }  
+ 101          
+ 102          void menu(unsigned char menu_option, float T) {
+ 103   1          switch (menu_option) {
+ 104   2              case 0x45:
+ 105   2                  // 菜单1: 直接在LCD1602上显示时间
+ 106   2                  DS1302_ReadTime(); // 从DS1302读取时间
+ 107   2                  // 显示时间在LCD1602 YY/MM/DD HH:MM:SS
+ 108   2                  LCD_ShowString(1, 1, "Time:"); // 第一行显示 "Time:"
+ 109   2                  LCD_ShowNum(1, 7, DS1302_Time[0], 2); // 年
+ 110   2                  LCD_ShowChar(1, 9, '/');
+ 111   2                  LCD_ShowNum(1, 10, DS1302_Time[1], 2); // 月
+ 112   2                  LCD_ShowChar(1, 12, '/');
+ 113   2                  LCD_ShowNum(1, 13, DS1302_Time[2], 2); // 日
+ 114   2      
+ 115   2                  LCD_ShowNum(2, 1, DS1302_Time[3], 2); // 小时
+ 116   2                  LCD_ShowChar(2, 3, ':');
+C51 COMPILER V9.00   MAIN                                                                  09/21/2024 10:46:07 PAGE 3   
 
- 117   2                  // 菜单2: 显示超声波传感器的距离
- 118   2              
- 119   2                  // 检查是否距离在有效范围内
- 120   2                  if (distance != 0xFFFF) {
- 121   3                      // 显示超声波测得的距离，单位为cm
- 122   3                      LCD_ShowString(1, 1, "Distance:"); 
- 123   3                      LCD_ShowNum(1, 10, distance, 3);    
- 124   3                      LCD_ShowString(1, 13, "cm");        
- 125   3              
- 126   3                      // 显示阈值ThrNum在第二行
- 127   3                      LCD_ShowString(2, 1, "Threshold:");
- 128   3                      LCD_ShowNum(2, 11, ThrNum, 3);
- 129   3                      LCD_ShowString(2, 14, "cm");
- 130   3              
- 131   3                      // 如果距离小于阈值，执行特定的处理逻辑
- 132   3                      if (distance < ThrNum) {
- 133   4                                      LCD_ShowString(1, 16, "!");
- 134   4                      } else {
- 135   4                                  LCD_ShowString(1, 16, " ");
- 136   4                      }
- 137   3                  } else {
- 138   3                      // 如果超出范围
- 139   3                      LCD_ShowString(1, 1, "Out of Range");
- 140   3                      // 清除第二行显示
- 141   3                      LCD_ShowString(2, 1, "                "); // 用空格清除第二行
- 142   3                  }
- 143   2                              Delay(10);
- 144   2                  break;
- 145   2                      case 0x47:
- 146   2                              LCD_ShowString(1,1,"Temperature:");
- 147   2                              if(T<0)                         //如果温度小于0
- 148   2                              {
- 149   3                                      LCD_ShowChar(2,1,'-');  //显示负号
- 150   3                                      T=-T;                   //将温度变为正数
- 151   3                              }
- 152   2                              else                            //如果温度大于等于0
- 153   2                              {
- 154   3                                      LCD_ShowChar(2,1,'+');  //显示正号
- 155   3                              }
- 156   2                              LCD_ShowNum(2,2,T,3);           //显示温度整数部分
- 157   2                              LCD_ShowChar(2,5,'.');          //显示小数点
- 158   2                              LCD_ShowNum(2,6,(unsigned long)(T*10000)%10000,4);//显示温度小数部分
- 159   2                              break;
- 160   2              default:
- 161   2                  // 显示无效
- 162   2                              LCD_ShowString(1,1,"key_number:");
- 163   2                  LCD_ShowHexNum(2,5,menu_option,2);
- 164   2                  break;
- 165   2          }
- 166   1      }
- 167                  
- 168          // 蜂鸣器按照1000Hz的频率响ms时间
- 169          void Buzzer_Time(unsigned int ms)
- 170          {
- 171   1              unsigned int i;
- 172   1              for(i=0;i<ms*2;i++)//控制时间：ms给100，蜂鸣器响100ms
- 173   1              {
- 174   2                      Buzzer = !Buzzer;//蜂鸣器引脚电平翻转发声
- 175   2                      Delay_ms(1);//控制频率：每隔500us翻转一次
- 176   2                      //高电平500us，低电平500us，T = 1000us，f = 1/10^-3(s) = 1000HZ
- 177   2              }
- 178   1      } 
-C51 COMPILER V9.00   MAIN                                                                  09/21/2024 08:08:56 PAGE 4   
+ 117   2                  LCD_ShowNum(2, 4, DS1302_Time[4], 2); // 分
+ 118   2                  LCD_ShowChar(2, 6, ':');
+ 119   2                  LCD_ShowNum(2, 7, DS1302_Time[5], 2); // 秒
+ 120   2                  break;
+ 121   2                                                                                                                 
+ 122   2              case 0x46:
+ 123   2                  // 菜单2: 显示超声波传感器的距离
+ 124   2              
+ 125   2                  // 检查是否距离在有效范围内
+ 126   2                  if (distance != 0xFFFF) {
+ 127   3                      // 显示超声波测得的距离，单位为cm
+ 128   3                      LCD_ShowString(1, 1, "Distance:"); 
+ 129   3                      LCD_ShowNum(1, 10, distance, 3);    
+ 130   3                      LCD_ShowString(1, 13, "cm");        
+ 131   3              
+ 132   3                      // 显示阈值ThrNum在第二行
+ 133   3                      LCD_ShowString(2, 1, "Threshold:");
+ 134   3                      LCD_ShowNum(2, 11, ThrNum, 3);
+ 135   3                      LCD_ShowString(2, 14, "cm");
+ 136   3              
+ 137   3                      // 如果距离小于阈值，执行特定的处理逻辑
+ 138   3                      if (distance < ThrNum) {
+ 139   4                                      LCD_ShowString(1, 16, "!");
+ 140   4                                      Buzzer_Time(50);
+ 141   4                      } else {
+ 142   4                                  LCD_ShowString(1, 16, " ");
+ 143   4                      }
+ 144   3                  } else {
+ 145   3                      // 如果超出范围
+ 146   3                      LCD_ShowString(1, 1, "Out of Range");
+ 147   3                      // 清除第二行显示
+ 148   3                      LCD_ShowString(2, 1, "                "); // 用空格清除第二行
+ 149   3                  }
+ 150   2                              Delay(10);
+ 151   2                  break;
+ 152   2                      case 0x47:
+ 153   2                              LCD_ShowString(1,1,"Temperature:");
+ 154   2                              if(T<0)                         //如果温度小于0
+ 155   2                              {
+ 156   3                                      LCD_ShowChar(2,1,'-');  //显示负号
+ 157   3                                      T=-T;                   //将温度变为正数
+ 158   3                              }
+ 159   2                              else                            //如果温度大于等于0
+ 160   2                              {
+ 161   3                                      LCD_ShowChar(2,1,'+');  //显示正号
+ 162   3                              }
+ 163   2                              LCD_ShowNum(2,2,T,3);           //显示温度整数部分
+ 164   2                              LCD_ShowChar(2,5,'.');          //显示小数点
+ 165   2                              LCD_ShowNum(2,6,(unsigned long)(T*10000)%10000,4);//显示温度小数部分
+ 166   2                              break;
+ 167   2              default:
+ 168   2                  // 显示无效
+ 169   2                              LCD_ShowString(1,1,"key_number:");
+ 170   2                  LCD_ShowHexNum(2,5,menu_option,2);
+ 171   2                  break;
+ 172   2          }
+ 173   1      }
+ 174                  
+ 175          // 蜂鸣器按照1000Hz的频率响ms时间
+ 176          void Buzzer_Time(unsigned int ms)
+ 177          {
+ 178   1              unsigned int i;
+C51 COMPILER V9.00   MAIN                                                                  09/21/2024 10:46:07 PAGE 4   
 
- 179          
- 180          
- 181          
- 182          void AT_Init(void)
- 183          {
- 184   1          printf("AT+CIPSNTPCFG=1,8,\"cn.ntp.org.cn\",\"ntp.sjtu.edu.cn\"");
- 185   1              printf("\r\n");
- 186   1              Delay(500);
- 187   1          printf("AT+MQTTUSERCFG=0,1,\"NULL\",\"0c4qP0fwXkAUsGu2Mfhd&k1ryxzSF8vb\",\"80c67c1aadd0037752bae746b77
-             -2036605b600c19c9025f12746757286b9e99b\",0,0,\"\"");
- 188   1              printf("\r\n");
- 189   1              Delay(500);
- 190   1          printf("AT+MQTTCLIENTID=0,\"k1ryxzSF8vb.0c4qP0fwXkAUsGu2Mfhd|securemode=2\\,signmethod=hmacsha256\\,ti
-             -mestamp=1726867041527|\"");
- 191   1              printf("\r\n");
- 192   1              Delay(500);
- 193   1          printf("AT+MQTTCONN=0,\"iot-06z00acui5vtoxn.mqtt.iothub.aliyuncs.com\",1883,1");
- 194   1              printf("\r\n");
- 195   1              Delay(500);
- 196   1      }               
- 197          char putchar(char dat)
- 198          {
- 199   1              UART_SendByte(dat);           
- 200   1              return dat;                    
- 201   1      }
- 202          void USART( ) interrupt  4
- 203          {    
- 204   1          static unsigned char i=0;
- 205   1              if(RI==1)
- 206   1              {       RI=0;
- 207   2                      if(i>=16)   //收到字符串超过数组长度
- 208   2                      { 
- 209   3                              i=0;
- 210   3                              UART_SendString("Data overflow !\r\n");
- 211   3                              memset(Data,0x00,sizeof(Data)); //数组清零
- 212   3                      }
- 213   2              else
- 214   2              {
- 215   3                              Data[i++]=SBUF;
- 216   3                              if( (Data[i-1]=='\n')  && (Data[i-2]=='\r') )  //判断结尾字符为回车换行符
- 217   3                              {
- 218   4                                      UART_SendString(Data) ;   //将收到的内容发送出去
- 219   4                      memset(Data,0x00,sizeof(Data));//数组清零
- 220   4                      i=0;                 
- 221   4                              }
- 222   3              }
- 223   2              }   
- 224   1      }
+ 179   1              for(i=0;i<ms*2;i++)//控制时间：ms给100，蜂鸣器响100ms
+ 180   1              {
+ 181   2                      Buzzer = !Buzzer;//蜂鸣器引脚电平翻转发声
+ 182   2                      Delay_ms(1);//控制频率：每隔500us翻转一次
+ 183   2                      //高电平500us，低电平500us，T = 1000us，f = 1/10^-3(s) = 1000HZ
+ 184   2              }
+ 185   1      } 
+ 186          
+ 187          
+ 188          
+ 189          void AT_Init(void)
+ 190          {
+ 191   1              printf("AT+CIPSNTPCFG=1,8,\"cn.pool.ntp.org\",\"ntp1.aliyun.com\"\r\n");
+ 192   1              Delay(300);
+ 193   1          printf("AT+CIPSNTPCFG=1,8,\"cn.ntp.org.cn\",\"ntp.sjtu.edu.cn\"\r\n");
+ 194   1              Delay(300);
+ 195   1          printf("AT+MQTTUSERCFG=0,1,\"NULL\",\"0c4qP0fwXkAUsGu2Mfhd&k1ryxzSF8vb\",\"80c67c1aadd0037752bae746b77
+             -2036605b600c19c9025f12746757286b9e99b\",0,0,\"\"\r\n");
+ 196   1              Delay(300);
+ 197   1          printf("AT+MQTTCLIENTID=0,\"k1ryxzSF8vb.0c4qP0fwXkAUsGu2Mfhd|securemode=2\\,signmethod=hmacsha256\\,ti
+             -mestamp=1726867041527|\"\r\n");
+ 198   1              Delay(300);
+ 199   1          printf("AT+MQTTCONN=0,\"iot-06z00acui5vtoxn.mqtt.iothub.aliyuncs.com\",1883,1\r\n");
+ 200   1              Delay(3000);
+ 201   1      }               
+ 202          char putchar(char dat)
+ 203          {
+ 204   1              UART_SendByte(dat);           
+ 205   1              return dat;                    
+ 206   1      }
+ 207          
+ 208          void parseTime(char *pTime)
+ 209          {
+ 210   1          // 提取小时
+ 211   1          DS1302_Time[3] = (pTime[0] - '0') * 10 + (pTime[1] - '0');  // 时
+ 212   1          // 提取分钟
+ 213   1          DS1302_Time[4] = (pTime[3] - '0') * 10 + (pTime[4] - '0');  // 分
+ 214   1          // 提取秒
+ 215   1          DS1302_Time[5] = (pTime[6] - '0') * 10 + (pTime[7] - '0');  // 秒
+ 216   1      }
+ 217          
+ 218          /**
+ 219            * @brief  串口中断服务函数，处理AT指令返回
+ 220            */
+ 221          void USART() interrupt 4
+ 222          {    
+ 223   1          static unsigned char i = 0;
+ 224   1          char *pTime;  // 用于指向时间部分的指针
+ 225   1          
+ 226   1          // 判断是否接收到数据
+ 227   1          if (RI == 1)
+ 228   1          {
+ 229   2              RI = 0;  // 清除接收标志位
+ 230   2              /*Data[i++] = SBUF;  // 将接收到的字节存储到 Data 数组中
+ 231   2      
+ 232   2              // 如果缓冲区满了，重置接收
+ 233   2              if (i >= sizeof(Data))
+ 234   2              {
+ 235   2                  i = 0;
+ 236   2                  memset(Data, 0x00, sizeof(Data));  // 清空缓冲区
+ 237   2                  UART_SendString("Data overflow !\r\n");
+ 238   2              }
+C51 COMPILER V9.00   MAIN                                                                  09/21/2024 10:46:07 PAGE 5   
+
+ 239   2              
+ 240   2              // 检测到回车换行，表示一条完整的数据已接收
+ 241   2              if (Data[i - 1] == '\n' && Data[i - 2] == '\r')
+ 242   2              {
+ 243   2                  Data[i] = '\0';  // 结束字符串
+ 244   2                  
+ 245   2                  // 查找 "+CIPSNTPTIME:" 并跳过它，直接读取日期和时间部分
+ 246   2                  pTime = strstr(Data, "+CIPSNTPTIME:");
+ 247   2                  if (pTime != NULL)
+ 248   2                  {
+ 249   2                      pTime = strchr(pTime, ' ');  // 跳到第一个空格
+ 250   2                      if (pTime != NULL)
+ 251   2                      {
+ 252   2                          pTime = strchr(pTime + 1, ' ');  // 跳过月份
+ 253   2                          if (pTime != NULL)
+ 254   2                          {
+ 255   2                              pTime = strchr(pTime + 1, ' ');  // 跳过日期部分到时间部分
+ 256   2                              if (pTime != NULL)
+ 257   2                              {
+ 258   2                                  parseTime(pTime + 1);  // 调用手动解析函数解析时间
+ 259   2      
+ 260   2                                  // 显示时间在LCD上
+ 261   2                                  // LCD_ShowString(1, 1, (char*)pTime + 1);
+ 262   2                                                              LCD_ShowString(2, 16, "!");
+ 263   2                              }
+ 264   2                          }
+ 265   2                      }
+ 266   2                  }
+ 267   2                  
+ 268   2                  // 清空接收缓冲区并重置索引
+ 269   2                  memset(Data, 0x00, sizeof(Data));
+ 270   2                  i = 0;
+ 271   2              } */
+ 272   2          }
+ 273   1      }
+*** WARNING C280 IN LINE 223 OF MAIN.C: 'i': unreferenced local variable
+*** WARNING C280 IN LINE 224 OF MAIN.C: 'pTime': unreferenced local variable
 
 
 MODULE INFORMATION:   STATIC OVERLAYABLE
-   CODE SIZE        =   1020    ----
-   CONSTANT SIZE    =    610    ----
+   CODE SIZE        =   1068    ----
+   CONSTANT SIZE    =    673    ----
    XDATA SIZE       =   ----    ----
-   PDATA SIZE       =   ----    ----
-   DATA SIZE        =     29      10
+   PDATA SIZE       =      2    ----
+   DATA SIZE        =     10      13
    IDATA SIZE       =   ----    ----
-   BIT SIZE         =   ----    ----
+   BIT SIZE         =      1    ----
 END OF MODULE INFORMATION.
 
 
-C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
+C51 COMPILATION COMPLETE.  2 WARNING(S),  0 ERROR(S)

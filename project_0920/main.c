@@ -8,16 +8,17 @@
 #include "IR.h"
 #include "UART.h"
 #include "string.h"
+#include <stdlib.h>
 
-unsigned int distance;
+unsigned int pdata distance;
 sbit Buzzer = P2^5;
 
 unsigned char ThrNum = 10;
-unsigned char Address;
 unsigned char Command;
 unsigned char Command_old;
 unsigned int Loop_count = 0;
-unsigned char Data[16];
+//unsigned char xdata  Data[48];
+bit timeReceived = 0;
 void AT_Init(void);
 
 float T;
@@ -26,14 +27,15 @@ char putchar(char dat);
 void menu(unsigned char, float);
 void Delay_ms(unsigned int);
 void LCD_ShowInt(unsigned char, unsigned char, int);
-void Buzzer_Time(unsigned int ms);   
+void Buzzer_Time(unsigned int);
+void parseTime(char*);   
 
 void main()
 {
-	UART_Init();
 	LCD_Init();
 	LCD_ShowString(1, 1, "AT_Init"); // 第一行显示 "Time:"
-	Delay(500);
+	Delay(10000);
+	UART_Init();
 	AT_Init();
 	P3 |= 0xFC;	
 	
@@ -51,12 +53,16 @@ void main()
 		if (Loop_count > 20){
 			//UART_Init();
 			Loop_count = 0;
-			printf("AT+MQTTPUB=0,\"/sys/k1ryxzSF8vb/0c4qP0fwXkAUsGu2Mfhd/thing/event/property/post\",\"{\\\"params\\\":{\\\"DetectDistance\\\":%d}}\",1,0", distance);
-			printf("\r\n");
-		}
+			printf("AT+MQTTPUB=0,\"/sys/k1ryxzSF8vb/0c4qP0fwXkAUsGu2Mfhd/thing/event/property/post\",\"{\\\"params\\\":{\\\"DetectDistance\\\":%d}}\",1,0\r\n", distance);
+			LCD_ShowString(2, 16, "!");
+			Delay(500);
+			printf("AT+CIPSNTPTIME?\r\n");
+	    } else {
+			LCD_ShowString(2, 16, " ");
+	    }
 	    if(IR_GetDataFlag() || IR_GetRepeatFlag()) // 如果收到数据帧或者收到连发帧
 	    {
-	        Address = IR_GetAddress();    // 获取遥控器地址码
+
 	        Command = IR_GetCommand();    // 获取遥控器命令码
 	
 	        Delay(80);  // 加一个短暂的延时用于去抖动，防止机械抖动影响
@@ -131,6 +137,7 @@ void menu(unsigned char menu_option, float T) {
 	        // 如果距离小于阈值，执行特定的处理逻辑
 	        if (distance < ThrNum) {
 				LCD_ShowString(1, 16, "!");
+				Buzzer_Time(50);
 	        } else {
 			    LCD_ShowString(1, 16, " ");
 	        }
@@ -181,44 +188,86 @@ void Buzzer_Time(unsigned int ms)
 
 void AT_Init(void)
 {
-    printf("AT+CIPSNTPCFG=1,8,\"cn.ntp.org.cn\",\"ntp.sjtu.edu.cn\"");
-	printf("\r\n");
-	Delay(500);
-    printf("AT+MQTTUSERCFG=0,1,\"NULL\",\"0c4qP0fwXkAUsGu2Mfhd&k1ryxzSF8vb\",\"80c67c1aadd0037752bae746b772036605b600c19c9025f12746757286b9e99b\",0,0,\"\"");
-	printf("\r\n");
-	Delay(500);
-    printf("AT+MQTTCLIENTID=0,\"k1ryxzSF8vb.0c4qP0fwXkAUsGu2Mfhd|securemode=2\\,signmethod=hmacsha256\\,timestamp=1726867041527|\"");
-	printf("\r\n");
-	Delay(500);
-    printf("AT+MQTTCONN=0,\"iot-06z00acui5vtoxn.mqtt.iothub.aliyuncs.com\",1883,1");
-	printf("\r\n");
-	Delay(500);
+	printf("AT+CIPSNTPCFG=1,8,\"cn.pool.ntp.org\",\"ntp1.aliyun.com\"\r\n");
+	Delay(300);
+    printf("AT+CIPSNTPCFG=1,8,\"cn.ntp.org.cn\",\"ntp.sjtu.edu.cn\"\r\n");
+	Delay(300);
+    printf("AT+MQTTUSERCFG=0,1,\"NULL\",\"0c4qP0fwXkAUsGu2Mfhd&k1ryxzSF8vb\",\"80c67c1aadd0037752bae746b772036605b600c19c9025f12746757286b9e99b\",0,0,\"\"\r\n");
+	Delay(300);
+    printf("AT+MQTTCLIENTID=0,\"k1ryxzSF8vb.0c4qP0fwXkAUsGu2Mfhd|securemode=2\\,signmethod=hmacsha256\\,timestamp=1726867041527|\"\r\n");
+	Delay(300);
+    printf("AT+MQTTCONN=0,\"iot-06z00acui5vtoxn.mqtt.iothub.aliyuncs.com\",1883,1\r\n");
+	Delay(3000);
 }	 	
 char putchar(char dat)
 {
 	UART_SendByte(dat);           
 	return dat;                    
 }
-void USART( ) interrupt  4
+
+void parseTime(char *pTime)
+{
+    // 提取小时
+    DS1302_Time[3] = (pTime[0] - '0') * 10 + (pTime[1] - '0');  // 时
+    // 提取分钟
+    DS1302_Time[4] = (pTime[3] - '0') * 10 + (pTime[4] - '0');  // 分
+    // 提取秒
+    DS1302_Time[5] = (pTime[6] - '0') * 10 + (pTime[7] - '0');  // 秒
+}
+
+/**
+  * @brief  串口中断服务函数，处理AT指令返回
+  */
+void USART() interrupt 4
 {    
-    static unsigned char i=0;
-	if(RI==1)
-	{	RI=0;
-		if(i>=16)   //收到字符串超过数组长度
-		{ 
-			i=0;
-			UART_SendString("Data overflow !\r\n");
-			memset(Data,0x00,sizeof(Data)); //数组清零
-		}
-        else
+    static unsigned char i = 0;
+    char *pTime;  // 用于指向时间部分的指针
+    
+    // 判断是否接收到数据
+    if (RI == 1)
+    {
+        RI = 0;  // 清除接收标志位
+        /*Data[i++] = SBUF;  // 将接收到的字节存储到 Data 数组中
+
+        // 如果缓冲区满了，重置接收
+        if (i >= sizeof(Data))
         {
-			Data[i++]=SBUF;
-			if( (Data[i-1]=='\n')  && (Data[i-2]=='\r') )  //判断结尾字符为回车换行符
-			{
-				UART_SendString(Data) ;   //将收到的内容发送出去
-                memset(Data,0x00,sizeof(Data));//数组清零
-                i=0;                 
-			}
+            i = 0;
+            memset(Data, 0x00, sizeof(Data));  // 清空缓冲区
+            UART_SendString("Data overflow !\r\n");
         }
-	}   
+        
+        // 检测到回车换行，表示一条完整的数据已接收
+        if (Data[i - 1] == '\n' && Data[i - 2] == '\r')
+        {
+            Data[i] = '\0';  // 结束字符串
+            
+            // 查找 "+CIPSNTPTIME:" 并跳过它，直接读取日期和时间部分
+            pTime = strstr(Data, "+CIPSNTPTIME:");
+            if (pTime != NULL)
+            {
+                pTime = strchr(pTime, ' ');  // 跳到第一个空格
+                if (pTime != NULL)
+                {
+                    pTime = strchr(pTime + 1, ' ');  // 跳过月份
+                    if (pTime != NULL)
+                    {
+                        pTime = strchr(pTime + 1, ' ');  // 跳过日期部分到时间部分
+                        if (pTime != NULL)
+                        {
+                            parseTime(pTime + 1);  // 调用手动解析函数解析时间
+
+                            // 显示时间在LCD上
+                            // LCD_ShowString(1, 1, (char*)pTime + 1);
+							LCD_ShowString(2, 16, "!");
+                        }
+                    }
+                }
+            }
+            
+            // 清空接收缓冲区并重置索引
+            memset(Data, 0x00, sizeof(Data));
+            i = 0;
+        } */
+    }
 }

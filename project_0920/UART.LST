@@ -1,4 +1,4 @@
-C51 COMPILER V9.00   UART                                                                  09/21/2024 08:08:58 PAGE 1   
+C51 COMPILER V9.00   UART                                                                  09/21/2024 10:46:09 PAGE 1   
 
 
 C51 COMPILER V9.00, COMPILATION OF MODULE UART
@@ -62,7 +62,7 @@ line level    source
   53   2              UART_SendByte(*s++); // ·¢ËÍµ±Ç°×Ö·û
   54   2          }
   55   1      }
-C51 COMPILER V9.00   UART                                                                  09/21/2024 08:08:58 PAGE 2   
+C51 COMPILER V9.00   UART                                                                  09/21/2024 10:46:09 PAGE 2   
 
 
 
