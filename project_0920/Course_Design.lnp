@@ -8,5 +8,6 @@
 "Int0.obj",
 "IR.obj",
 "OneWire.obj",
-"Timer0.obj" 
+"Timer0.obj",
+"UART.obj" 
 TO "Course_Design" 

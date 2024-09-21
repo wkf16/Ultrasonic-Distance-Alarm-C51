@@ -6,6 +6,8 @@
 #include "HC_SR04.h"
 #include "DS18B20.h"
 #include "IR.h"
+#include "UART.h"
+#include "string.h"
 
 unsigned int distance;
 sbit Buzzer = P2^5;
@@ -14,27 +16,46 @@ unsigned char ThrNum = 10;
 unsigned char Address;
 unsigned char Command;
 unsigned char Command_old;
+unsigned int Loop_count = 0;
+unsigned char Data[16];
+void AT_Init(void);
 
 float T;
 
+char putchar(char dat);
 void menu(unsigned char, float);
 void Delay_ms(unsigned int);
 void LCD_ShowInt(unsigned char, unsigned char, int);
-void Buzzer_Time(unsigned int ms);
+void Buzzer_Time(unsigned int ms);   
 
 void main()
 {
-	P3 = 0xFF;	
+	UART_Init();
 	LCD_Init();
+	LCD_ShowString(1, 1, "AT_Init"); // 第一行显示 "Time:"
+	Delay(500);
+	AT_Init();
+	P3 |= 0xFC;	
+	
 	IR_Init();
 	HC_SR04_Init();
 	DS1302_Init();
 	DS1302_SetTime();
 	while(1)
 	{
+		Loop_count++;
+		distance = HC_SR04_GetDistance(); // 获取超声波测得的距离
+		DS18B20_ConvertT();	//转换温度
+		T=DS18B20_ReadT();	//读取温度
+		//printf("%d\r\n", Loop_count);
+		if (Loop_count > 20){
+			//UART_Init();
+			Loop_count = 0;
+			printf("AT+MQTTPUB=0,\"/sys/k1ryxzSF8vb/0c4qP0fwXkAUsGu2Mfhd/thing/event/property/post\",\"{\\\"params\\\":{\\\"DetectDistance\\\":%d}}\",1,0", distance);
+			printf("\r\n");
+		}
 	    if(IR_GetDataFlag() || IR_GetRepeatFlag()) // 如果收到数据帧或者收到连发帧
 	    {
-	        P3 = 0xFF;
 	        Address = IR_GetAddress();    // 获取遥控器地址码
 	        Command = IR_GetCommand();    // 获取遥控器命令码
 	
@@ -59,6 +80,7 @@ void main()
 	                    DS1302_Init();
 	                    break;
 	                case 0x47:
+						P3 |= 0xFC;
 	                    DS18B20_ConvertT(); // 上电先转换一次温度，防止第一次读数据错误
 	                    Delay(100);          
 	                    break;
@@ -69,7 +91,7 @@ void main()
 	    }
 	    menu(Command, T);
 	}
-}
+}  
 
 void menu(unsigned char menu_option, float T) {
     switch (menu_option) {
@@ -93,7 +115,6 @@ void menu(unsigned char menu_option, float T) {
 													   
         case 0x46:
 	    // 菜单2: 显示超声波传感器的距离
-	    distance = HC_SR04_GetDistance(); // 获取超声波测得的距离
 	
 	    // 检查是否距离在有效范围内
 	    if (distance != 0xFFFF) {
@@ -123,8 +144,6 @@ void menu(unsigned char menu_option, float T) {
             break;
 		case 0x47:
 			LCD_ShowString(1,1,"Temperature:");
-			DS18B20_ConvertT();	//转换温度
-			T=DS18B20_ReadT();	//读取温度
 			if(T<0)				//如果温度小于0
 			{
 				LCD_ShowChar(2,1,'-');	//显示负号
@@ -145,7 +164,7 @@ void menu(unsigned char menu_option, float T) {
             break;
     }
 }
-	/*
+	
 // 蜂鸣器按照1000Hz的频率响ms时间
 void Buzzer_Time(unsigned int ms)
 {
@@ -156,10 +175,50 @@ void Buzzer_Time(unsigned int ms)
 		Delay_ms(1);//控制频率：每隔500us翻转一次
 		//高电平500us，低电平500us，T = 1000us，f = 1/10^-3(s) = 1000HZ
 	}
-} */
+} 
 
-void LCD_ShowInt(unsigned char Line, unsigned char Column, int Number) {
-    char buffer[16];  // 用于存储转换后的字符串
-    sprintf(buffer, "%d", Number);  // 将整数转换为字符串
-    LCD_ShowString(Line, Column, buffer);  // 显示字符串
+
+
+void AT_Init(void)
+{
+    printf("AT+CIPSNTPCFG=1,8,\"cn.ntp.org.cn\",\"ntp.sjtu.edu.cn\"");
+	printf("\r\n");
+	Delay(500);
+    printf("AT+MQTTUSERCFG=0,1,\"NULL\",\"0c4qP0fwXkAUsGu2Mfhd&k1ryxzSF8vb\",\"80c67c1aadd0037752bae746b772036605b600c19c9025f12746757286b9e99b\",0,0,\"\"");
+	printf("\r\n");
+	Delay(500);
+    printf("AT+MQTTCLIENTID=0,\"k1ryxzSF8vb.0c4qP0fwXkAUsGu2Mfhd|securemode=2\\,signmethod=hmacsha256\\,timestamp=1726867041527|\"");
+	printf("\r\n");
+	Delay(500);
+    printf("AT+MQTTCONN=0,\"iot-06z00acui5vtoxn.mqtt.iothub.aliyuncs.com\",1883,1");
+	printf("\r\n");
+	Delay(500);
+}	 	
+char putchar(char dat)
+{
+	UART_SendByte(dat);           
+	return dat;                    
+}
+void USART( ) interrupt  4
+{    
+    static unsigned char i=0;
+	if(RI==1)
+	{	RI=0;
+		if(i>=16)   //收到字符串超过数组长度
+		{ 
+			i=0;
+			UART_SendString("Data overflow !\r\n");
+			memset(Data,0x00,sizeof(Data)); //数组清零
+		}
+        else
+        {
+			Data[i++]=SBUF;
+			if( (Data[i-1]=='\n')  && (Data[i-2]=='\r') )  //判断结尾字符为回车换行符
+			{
+				UART_SendString(Data) ;   //将收到的内容发送出去
+                memset(Data,0x00,sizeof(Data));//数组清零
+                i=0;                 
+			}
+        }
+	}   
 }

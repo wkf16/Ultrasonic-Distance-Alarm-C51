@@ -1,4 +1,4 @@
-C51 COMPILER V9.00   HC_SR04                                                               09/21/2024 03:41:50 PAGE 1   
+C51 COMPILER V9.00   HC_SR04                                                               09/21/2024 08:08:57 PAGE 1   
 
 
 C51 COMPILER V9.00, COMPILATION OF MODULE HC_SR04
@@ -62,7 +62,7 @@ line level    source
   53   1      
   54   1          while (Echo) {     // 当Echo引脚保持高电平时
   55   2              if (TF1) {     // 检查定时器1是否溢出
-C51 COMPILER V9.00   HC_SR04                                                               09/21/2024 03:41:50 PAGE 2   
+C51 COMPILER V9.00   HC_SR04                                                               09/21/2024 08:08:57 PAGE 2   
 
   56   3                  TF1 = 0;   // 清除溢出标志
   57   3                  Timer_Count++;  // 计数溢出次数
